@@ -1,0 +1,45 @@
+# Bazel output directories
+/bazel-bin/
+/bazel-out/
+/bazel-testlogs/
+/bazel-sdr/
+
+# General build artifacts
+*.o
+*.obj
+*.so
+*.a
+*.dylib
+*.exe
+*.out
+*.dll
+
+# Temporary and editor files
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# Logs, caches, and runtime files
+*.log
+*.tmp
+*.pid
+__pycache__/
+*.pyc
+coverage/
+
+# Common folders
+dist/
+
+# Coverage and profiling
+*.gcda
+*.gcno
+
+# Ignore local user secrets or env files
+*.env
+secret-*.pem
