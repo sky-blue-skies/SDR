@@ -4,6 +4,9 @@
 /bazel-testlogs/
 /bazel-sdr/
 
+# Ignore any other bazel output directories (e.g., bazel-local, bazel-cache)
+bazel-*/
+
 # General build artifacts
 *.o
 *.obj
