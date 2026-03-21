@@ -1,11 +1,19 @@
 # Bazel output directories
-/bazel-bin/
-/bazel-out/
-/bazel-testlogs/
-/bazel-sdr/
+# Bazel output (match directories and symlink entries)
+bazel-bin/
+bazel-out/
+bazel-testlogs/
+bazel-sdr/
+bazel-bin
+bazel-out
+bazel-testlogs
+bazel-sdr
 
 # Ignore any other bazel output directories (e.g., bazel-local, bazel-cache)
 bazel-*/
+
+# Bazel workspace lock
+MODULE.bazel.lock
 
 # General build artifacts
 *.o
