@@ -5,7 +5,10 @@ cc_library(
     srcs = ["rtl_source.cc"],
     hdrs = ["include/rtl_source.h"],
     includes = ["include"],
-    copts = ["-std=c++23"],
+    copts = [
+      "-std=c++23",
+      "-Isrc/dsp/include"
+    ],
     deps = ["//third_party/homebrew:rtlsdr"],
     visibility = ["//visibility:public"],
 )
