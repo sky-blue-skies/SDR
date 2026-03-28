@@ -11,5 +11,7 @@ cc_binary(
     deps = [
         "//src/rtl:rtl_source",
         "//src/dsp:fm_demod",
+        "//src/dsp:fir_filter",
+        "//src/dsp:decimator"
     ],
 )

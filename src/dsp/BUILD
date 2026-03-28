@@ -10,3 +10,25 @@ cc_library(
   ],
   visibility = ["//visibility:public"],
 )
+
+cc_library(
+  name = "fir_filter",
+  srcs = ["fir_filter.cc"],
+  hdrs = ["include/fir_filter.h"],
+  copts = [
+    "-std=c++23",
+    "-Isrc/dsp/include"
+  ],
+  visibility = ["//visibility:public"],
+)
+
+cc_library(
+  name = "decimator",
+  srcs = ["decimator.cc"],
+  hdrs = ["include/decimator.h"],
+  copts = [
+    "-std=c++23",
+    "-Isrc/dsp/include"
+  ],
+  visibility = ["//visibility:public"],
+)
