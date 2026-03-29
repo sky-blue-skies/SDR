@@ -1,16 +1,18 @@
 #ifndef DECIMATOR_H
 #define DECIMATOR_H
 
-#include <vector>
 #include <complex>
+#include <vector>
 
 class Decimator {
  public:
   explicit Decimator(int factor);
 
   // Decimate a block of complex IQ samplesß
-  std::vector<std::complex<float>> process(
-      const std::vector<std::complex<float>>& in);
+  void process(const std::vector<std::complex<float>>& in,
+               std::vector<std::complex<float>>& out);
+
+  void process(const std::vector<float>& in, std::vector<float>& out);
 
   int factor() const { return _factor; }
 

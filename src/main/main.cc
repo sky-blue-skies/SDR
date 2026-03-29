@@ -40,6 +40,14 @@ int main(int argc, char* argv[]) {
   Deemphasis deemph(tau_us, post_rf_rate);
   Decimator audio_decim(decim_audio);
 
+  // Buffers — allocated once, reused every block
+  std::vector<std::complex<float>> iq;
+  std::vector<std::complex<float>> filtered;
+  std::vector<std::complex<float>> decimated;
+  std::vector<float> demodulated;
+  std::vector<float> deemphasised;
+  std::vector<float> audio;
+
   for (int block = 0; block < 10; ++block) {
     auto raw = sdr.read(16384);
 
@@ -53,24 +61,19 @@ int main(int argc, char* argv[]) {
     }
 
     // RF stage
-    auto filtered = lpf.process(iq);              // 1'024'000 Hz → filtered
-    auto decimated = rf_decim.process(filtered);  // → 256'000 Hz
+    lpf.process(iq, filtered);              // 1'024'000 Hz → filtered
+    rf_decim.process(filtered, decimated);  // → 256'000 Hz
 
     switch (mode) {
       case Mode::AudioDemod: {
         // Audio stage: demod -> de-emphasis -> decimate to 42 kHz
-        std::vector<float> demodulated = demod.process(decimated);  // FM Demod
-        std::vector<float> demphasised = deemph.process(demodulated);
+        demod.process(decimated, demodulated);  // FM Demod
+        deemph.process(demodulated, deemphasised);
 
-        // wrap in complex for decimator
-        std::vector<std::complex<float>> audio_cx;
-        audio_cx.reserve(demphasised.size());
-        for (float s : demphasised) audio_cx.emplace_back(s, 0.f);
-
-        auto audio = audio_decim.process(audio_cx);
+        audio_decim.process(deemphasised, audio);
 
         float mean = 0.f;
-        for (auto& s : audio) mean += std::abs(s.real());
+        for (auto& s : audio) mean += std::abs(s);
         mean /= static_cast<float>(audio.size());
 
         std::cout << "Block " << block << " - Audio mean amplitude: " << mean

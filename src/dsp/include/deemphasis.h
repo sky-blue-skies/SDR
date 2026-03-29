@@ -9,11 +9,11 @@ class Deemphasis {
   // sample_rate - sample rate of the input signal
   explicit Deemphasis(float tau_us, float sample_rate);
 
-  std::vector<float> process(const std::vector<float>& in);
+  void process(const std::vector<float>& in, std::vector<float>& out);
 
  private:
   float _alpha;
-  float _prev;
+  float _prev = 0.f;
 };
 
 #endif  // DEEMPHASIS_H

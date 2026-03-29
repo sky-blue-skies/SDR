@@ -10,15 +10,24 @@ Decimator::Decimator(int factor) : _factor{factor} {
 
 // ── Decimate process
 // ─────────────────────────────────────────────────────────────
-std::vector<std::complex<float>> Decimator::process(
-    const std::vector<std::complex<float>>& in) {
-  std::vector<std::complex<float>> out;
+void Decimator::process(const std::vector<std::complex<float>>& in,
+                        std::vector<std::complex<float>>& out) {
+  out.clear();
   out.reserve(in.size() / _factor + 1);
 
   for (size_t i = 0; i < in.size(); ++i) {
     if (_phase == 0) out.push_back(in[i]);
     _phase = (_phase + 1) % _factor;
   }
+}
 
-  return out;
+// ─────────────────────────────────────────────────────────────
+void Decimator::process(const std::vector<float>& in, std::vector<float>& out) {
+  out.clear();
+  out.reserve(in.size() / _factor + 1);
+
+  for (size_t i = 0; i < in.size(); ++i) {
+    if (_phase == 0) out.push_back(in[i]);
+    _phase = (_phase + 1) % _factor;
+  }
 }

@@ -2,9 +2,8 @@
 
 #include <cmath>
 
-std::vector<float> FmDemod::process(
-    const std::vector<std::complex<float>>& iq) {
-  std::vector<float> out;
+void FmDemod::process(const std::vector<std::complex<float>>& iq,
+                      std::vector<float>& out) {
   out.reserve(iq.size());
   for (const auto& sample : iq) {
     // Multiply current sample by the conjugate of the last sample
@@ -17,5 +16,4 @@ std::vector<float> FmDemod::process(
     out.push_back(demod);
     _prev = sample;
   }
-  return out;
 }

@@ -51,9 +51,8 @@ std::vector<float> FirFilter::design_lowpass(float cutoff_norm, int num_taps) {
 }
 
 // ── Per block processing ───────────────────────────────────────
-std::vector<std::complex<float>> FirFilter::process(
-    const std::vector<std::complex<float>>& in) {
-  std::vector<std::complex<float>> out;
+void FirFilter::process(const std::vector<std::complex<float>>& in,
+                        std::vector<std::complex<float>>& out) {
   out.reserve(in.size());
 
   // Prepend delay line to input for convolution
@@ -77,6 +76,4 @@ std::vector<std::complex<float>> FirFilter::process(
   // Save the last (taps-1) samples as the new delay line
   const size_t delay_len = _coeffs.size() - 1;
   _delay.assign(buf.end() - static_cast<int>(delay_len), buf.end());
-
-  return out;
 }

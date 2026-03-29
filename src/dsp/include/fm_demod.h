@@ -9,7 +9,8 @@ class FmDemod {
   FmDemod() = default;
 
   // Process a block of IQ samples -> audio samples
-  std::vector<float> process(const std::vector<std::complex<float>>& iq);
+  void process(const std::vector<std::complex<float>>& iq,
+               std::vector<float>& out);
 
  private:
   std::complex<float> _prev = {1.f,

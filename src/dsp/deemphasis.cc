@@ -19,15 +19,12 @@ Deemphasis::Deemphasis(float tau_us, float sample_rate) {
   // For UK 50µs @ 256kHz: α ≈ 0.0724
 }
 
-std::vector<float> Deemphasis::process(const std::vector<float>& in) {
-  std::vector<float> out;
+void Deemphasis::process(const std::vector<float>& in,
+                         std::vector<float>& out) {
   out.reserve(in.size());
 
-  for (float x : in) {
-    // Single-pole IIR y[n] = α·x[n] + (1-α)·y[n-1]
-    _prev = _alpha * x + (1 - _alpha) * _prev;
-    out.push_back(_prev);
+  for (size_t n = 0; n < in.size(); ++n) {
+    _prev = _alpha * in[n] + (1.f - _alpha) * _prev;
+    out[n] = _prev;
   }
-
-  return out;
 }
