@@ -12,6 +12,7 @@ cc_binary(
         "//src/rtl:rtl_source",
         "//src/dsp:fm_demod",
         "//src/dsp:fir_filter",
-        "//src/dsp:decimator"
+        "//src/dsp:decimator",
+        "//src/dsp:deemphasis"
     ],
 )

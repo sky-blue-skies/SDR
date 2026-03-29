@@ -32,3 +32,14 @@ cc_library(
   ],
   visibility = ["//visibility:public"],
 )
+
+cc_library(
+  name = "deemphasis",
+  srcs = ["deemphasis.cc"],
+  hdrs = ["include/deemphasis.h"],
+  copts = [
+    "-std=c++23",
+    "-Isrc/dsp/include"
+  ],
+  visibility = ["//visibility:public"],
+)
