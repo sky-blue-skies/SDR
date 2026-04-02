@@ -21,7 +21,8 @@ Deemphasis::Deemphasis(float tau_us, float sample_rate) {
 
 void Deemphasis::process(const std::vector<float>& in,
                          std::vector<float>& out) {
-  out.reserve(in.size());
+  out.clear();
+  out.resize(in.size());  // ← resize not reserve
 
   for (size_t n = 0; n < in.size(); ++n) {
     _prev = _alpha * in[n] + (1.f - _alpha) * _prev;

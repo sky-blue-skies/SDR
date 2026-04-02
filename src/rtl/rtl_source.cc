@@ -10,6 +10,8 @@ RtlSource::RtlSource(uint32_t freq_hz, uint32_t sample_rate)
   rtlsdr_set_sample_rate(_dev, _sample_rate);
   rtlsdr_set_center_freq(_dev, _freq_hz);
   rtlsdr_set_tuner_gain_mode(_dev, 0);  // 0 = auto gain
+  // rtlsdr_set_tuner_gain_mode(_dev, 1);  // manual
+  // rtlsdr_set_tuner_gain(_dev, 496);     // 49.6 dB
 
   rtlsdr_reset_buffer(_dev);
 

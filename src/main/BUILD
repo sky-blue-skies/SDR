@@ -6,13 +6,15 @@ cc_binary(
     copts = [
         "-std=c++23",
         "-Isrc/dsp/include",
-        "-Isrc/rtl/include"
+        "-Isrc/rtl/include",
+        "-Isrc/audio/include",
     ],
     deps = [
         "//src/rtl:rtl_source",
         "//src/dsp:fm_demod",
         "//src/dsp:fir_filter",
         "//src/dsp:decimator",
-        "//src/dsp:deemphasis"
+        "//src/dsp:deemphasis",
+        "//src/audio:audio_sink",
     ],
 )

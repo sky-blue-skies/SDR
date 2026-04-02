@@ -53,27 +53,23 @@ std::vector<float> FirFilter::design_lowpass(float cutoff_norm, int num_taps) {
 // ── Per block processing ───────────────────────────────────────
 void FirFilter::process(const std::vector<std::complex<float>>& in,
                         std::vector<std::complex<float>>& out) {
+  out.clear();  // ← clear before filling
   out.reserve(in.size());
 
-  // Prepend delay line to input for convolution
-  //  Full buffer = [_delay | in]
   std::vector<std::complex<float>> buf;
   buf.reserve(_delay.size() + in.size());
   buf.insert(buf.end(), _delay.begin(), _delay.end());
   buf.insert(buf.end(), in.begin(), in.end());
+
   const int taps = static_cast<int>(_coeffs.size());
 
   for (size_t i = 0; i < in.size(); ++i) {
     std::complex<float> acc = {0.f, 0.f};
-
-    for (int k = 0; k < taps; ++k) {
-      acc += _coeffs[k] * buf[i + taps - 1 - k];
-    }
-
+    for (int k = 0; k < taps; ++k) acc += _coeffs[k] * buf[i + taps - 1 - k];
     out.push_back(acc);
   }
 
-  // Save the last (taps-1) samples as the new delay line
+  // Save exactly the last (taps-1) samples from the INPUT, not from buf
   const size_t delay_len = _coeffs.size() - 1;
-  _delay.assign(buf.end() - static_cast<int>(delay_len), buf.end());
+  _delay.assign(in.end() - static_cast<int>(delay_len), in.end());
 }
