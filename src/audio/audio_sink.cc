@@ -6,10 +6,12 @@
 // ── Construction
 // ──────────────────────────────────────────────────────────────
 
-AudioSink::AudioSink(float sample_rate, size_t buffer_size)
+AudioSink::AudioSink(float sample_rate, float max_deviation_hz,
+                     float post_rf_rate, size_t buffer_size)
     : _ring(buffer_size, 0.f),
       _capacity(buffer_size),
-      _sample_rate(sample_rate) {
+      _sample_rate(sample_rate),
+      _k_scale(1.f / (2.f * 3.14159265f * max_deviation_hz / post_rf_rate)) {
   PaError err = Pa_Initialize();
 
   if (err != paNoError) throw std::runtime_error(Pa_GetErrorText(err));
@@ -57,7 +59,7 @@ AudioSink::~AudioSink() {
 void AudioSink::write(const std::vector<float>& samples) {
   for (float s : samples) {
     // Scale from atan2 range [-π, π] to [-1, 1]
-    float scaled = s * k_scale;
+    float scaled = s * _k_scale;
 
     // Soft clip to [-1, 1] just in case
     if (scaled > 1.f) scaled = 1.f;

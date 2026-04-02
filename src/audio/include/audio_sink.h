@@ -12,7 +12,8 @@ class AudioSink {
  public:
   // sample_rate — audio sample rate in Hz (e.g. 42667)
   // buffer_size — ring buffer size in samples
-  explicit AudioSink(float sample_rate, size_t buffer_size = 65536);
+  explicit AudioSink(float sample_rate, float max_deviation_hz,
+                     float post_rf_rate, size_t buffer_size = 65536);
   ~AudioSink();
 
   // Non-copyable — owns hardware resource
@@ -44,6 +45,6 @@ class AudioSink {
   // Normalisation scale — FM max deviation is 75kHz
   // at 256kHz post-RF rate, full scale = π radians
   // we scale down to [-1, 1] for the DAC
-  static constexpr float k_scale = 1.f / 3.14159265f;
+  float _k_scale;  // computed in constructor
 };
 #endif  // AUDIO_SINK_H

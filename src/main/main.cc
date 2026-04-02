@@ -15,6 +15,7 @@
 constexpr uint32_t freq_Hz = 93'500'000;
 constexpr uint32_t sample_rate_hz = 1'152'000;
 constexpr float channel_bw_hz = 100'000.f;
+constexpr float max_deviation_hz = 75'000.f;
 constexpr int decim_rf = 4;
 constexpr int decim_audio = 6;
 constexpr float post_rf_rate =
@@ -105,7 +106,7 @@ int main(int argc, char* argv[]) {
   FmDemod demod;
   Deemphasis deemph(tau_us, post_rf_rate);
   Decimator audio_decim(decim_audio);
-  AudioSink sink(audio_rate);
+  AudioSink sink(audio_rate, max_deviation_hz, post_rf_rate);
 
   // Buffers — allocated once, reused every block
   std::vector<std::complex<float>> iq;
