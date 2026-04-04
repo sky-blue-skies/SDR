@@ -43,3 +43,25 @@ cc_library(
   ],
   visibility = ["//visibility:public"],
 )
+
+cc_library(
+  name = "dc_blocker",
+  srcs = ["dc_blocker.cc"],
+  hdrs = ["include/dc_blocker.h"],
+  copts = [
+    "-std=c++23",
+    "-Isrc/dsp/include"
+  ],
+  visibility = ["//visibility:public"],
+)
+
+cc_library(
+  name = "agc",
+  srcs = ["agc.cc"],
+  hdrs = ["include/agc.h"],
+  copts = [
+    "-std=c++23",
+    "-Isrc/dsp/include"
+  ],
+  visibility = ["//visibility:public"],
+)

@@ -7,11 +7,11 @@
 // ──────────────────────────────────────────────────────────────
 
 AudioSink::AudioSink(float sample_rate, float max_deviation_hz,
-                     float post_rf_rate, size_t buffer_size)
+                     size_t buffer_size)
     : _ring(buffer_size, 0.f),
       _capacity(buffer_size),
       _sample_rate(sample_rate),
-      _k_scale(1.f / (2.f * 3.14159265f * max_deviation_hz / post_rf_rate)) {
+      _k_scale(1.f / max_deviation_hz) {
   PaError err = Pa_Initialize();
 
   if (err != paNoError) throw std::runtime_error(Pa_GetErrorText(err));
@@ -93,8 +93,8 @@ int AudioSink::callback(float* output, unsigned long frame_count) {
     size_t rpos = _read_pos.load(std::memory_order_relaxed);
 
     if (rpos == _write_pos.load(std::memory_order_acquire)) {
-      // Buffer underrun — output silence
       output[i] = 0.f;
+      _underrun_count.fetch_add(1, std::memory_order_relaxed);  // ← add this
     } else {
       output[i] = _ring[rpos];
       _read_pos.store((rpos + 1) % _capacity, std::memory_order_release);

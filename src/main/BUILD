@@ -15,6 +15,9 @@ cc_binary(
         "//src/dsp:fir_filter",
         "//src/dsp:decimator",
         "//src/dsp:deemphasis",
+        "//src/dsp:dc_blocker",
+        "//src/dsp:agc",
         "//src/audio:audio_sink",
+        "//third_party/homebrew:fftw3f",
     ],
 )

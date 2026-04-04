@@ -10,10 +10,11 @@
 
 class AudioSink {
  public:
+  uint64_t underrun_count() const { return _underrun_count.load(); }
   // sample_rate — audio sample rate in Hz (e.g. 42667)
   // buffer_size — ring buffer size in samples
   explicit AudioSink(float sample_rate, float max_deviation_hz,
-                     float post_rf_rate, size_t buffer_size = 65536);
+                     size_t buffer_size = 65536);
   ~AudioSink();
 
   // Non-copyable — owns hardware resource
@@ -25,6 +26,7 @@ class AudioSink {
   void write(const std::vector<float>& samples);
 
  private:
+  std::atomic<uint64_t> _underrun_count{0};
   // PortAudio callback — called from audio thread
   static int pa_callback(const void* input, void* output,
                          unsigned long frame_count,
