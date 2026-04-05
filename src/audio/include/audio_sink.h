@@ -14,7 +14,7 @@ class AudioSink {
   // sample_rate — audio sample rate in Hz (e.g. 42667)
   // buffer_size — ring buffer size in samples
   explicit AudioSink(float sample_rate, float max_deviation_hz,
-                     size_t buffer_size = 65536);
+                     size_t buffer_size = 524288);
   ~AudioSink();
 
   // Non-copyable — owns hardware resource

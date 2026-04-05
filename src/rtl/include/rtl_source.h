@@ -1,34 +1,39 @@
-#ifndef RTL_SOURCE_H
-#define RTL_SOURCE_H
+#pragma once
 
 #include <rtl-sdr.h>
 
+#include <atomic>
 #include <cstdint>
+#include <functional>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 class RtlSource {
  public:
+  using Callback = std::function<void(const uint8_t*, size_t)>;
+
   explicit RtlSource(uint32_t freq_hz, uint32_t sample_rate = 1'024'000);
   ~RtlSource();
 
-  // Non-copyable = owns a hardware resource
   RtlSource(const RtlSource&) = delete;
   RtlSource& operator=(const RtlSource&) = delete;
-  // Movable
-  RtlSource(RtlSource&&) = default;
-  RtlSource& operator=(RtlSource&&) = default;
 
-  // Read num_samples IQ pairs as raw uint8
-  std::vector<uint8_t> read(int num_samples);
+  // Start streaming — callback is called from the async thread
+  void start(Callback cb);
+  void stop();
 
   uint32_t sample_rate() const { return _sample_rate; }
   uint32_t freq_hz() const { return _freq_hz; }
+  uint32_t actual_sample_rate() const { return rtlsdr_get_sample_rate(_dev); }
 
  private:
+  static void rtlsdr_callback(unsigned char* buf, uint32_t len, void* ctx);
+
   rtlsdr_dev_t* _dev = nullptr;
   uint32_t _sample_rate = 0;
   uint32_t _freq_hz = 0;
+  Callback _callback;
+  std::thread _async_thread;
+  std::atomic<bool> _running{false};
 };
-
-#endif  // RTL_SOURCE_H

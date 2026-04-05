@@ -32,6 +32,9 @@ AudioSink::AudioSink(float sample_rate, float max_deviation_hz,
   }
 
   err = Pa_StartStream(_stream);
+  // Pre-fill with silence to give SDR thread time to buffer up
+  std::fill(_ring.begin(), _ring.end(), 0.f);
+  _write_pos.store(_capacity / 2, std::memory_order_release);
   if (err != paNoError) {
     Pa_CloseStream(_stream);
     Pa_Terminate();

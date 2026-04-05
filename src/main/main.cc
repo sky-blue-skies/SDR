@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <complex>
 #include <csignal>
 #include <fstream>
@@ -22,11 +23,11 @@
 #include "rtl_source.h"
 
 constexpr uint32_t freq_Hz = 88'100'000;
-constexpr uint32_t sample_rate_hz = 1'152'000;
+constexpr uint32_t sample_rate_hz = 960'000;
 constexpr float channel_bw_hz = 100'000.f;
 constexpr float max_deviation_hz = 75'000.f * 0.5f;
 constexpr int decim_rf = 4;
-constexpr int decim_audio = 6;
+constexpr int decim_audio = 5;
 constexpr float post_rf_rate = static_cast<float>(sample_rate_hz) / decim_rf;
 constexpr float audio_rate = post_rf_rate / decim_audio;
 constexpr float tau_us = 50.f;
@@ -49,25 +50,23 @@ Mode parse_args(int argc, char* argv[]) {
   return Mode::AudioDemod;
 }
 
-float measure_power(RtlSource& sdr, int n_blocks = 4) {
-  float power = 0.f;
-  int total = 0;
-  for (int b = 0; b < n_blocks; ++b) {
-    auto raw = sdr.read(16'384);
-    for (size_t i = 0; i + 1 < raw.size(); i += 2) {
-      float I = (raw[i] - 127.5f) / 127.5f;
-      float Q = (raw[i + 1] - 127.5f) / 127.5f;
-      power += I * I + Q * Q;
-      ++total;
-    }
-  }
-  power /= static_cast<float>(total);
-  return 10.f * std::log10(power + 1e-12f);
+// ── Scan mode uses sync reads — keep a separate sync helper ──────────────────
+// Note: scan mode creates its own RtlSource with the old-style sync read.
+// We keep a minimal sync read wrapper here only for scan/fft/power modes.
+static std::vector<uint8_t> sync_read(rtlsdr_dev_t* dev, int num_samples) {
+  std::vector<uint8_t> buf(num_samples * 2);
+  int n_read = 0;
+  rtlsdr_read_sync(dev, buf.data(), static_cast<int>(buf.size()), &n_read);
+  buf.resize(n_read);
+  return buf;
 }
 
 int main(int argc, char* argv[]) {
   const Mode mode = parse_args(argc, argv);
 
+  std::signal(SIGINT, [](int) { running = false; });
+
+  // ── Scan mode ─────────────────────────────────────────────────────────────
   if (mode == Mode::Scan) {
     std::cout << "\nScanning FM frequencies...\n\n";
     struct Result {
@@ -75,12 +74,34 @@ int main(int argc, char* argv[]) {
       float power_db;
     };
     std::vector<Result> results;
+
     for (uint32_t freq : scan_freqs) {
-      RtlSource sdr(freq, sample_rate_hz);
-      float db = measure_power(sdr);
+      rtlsdr_dev_t* dev = nullptr;
+      rtlsdr_open(&dev, 0);
+      rtlsdr_set_sample_rate(dev, sample_rate_hz);
+      rtlsdr_set_center_freq(dev, freq);
+      rtlsdr_set_tuner_gain_mode(dev, 0);
+      rtlsdr_reset_buffer(dev);
+
+      float power = 0.f;
+      int total = 0;
+      for (int b = 0; b < 4; ++b) {
+        auto raw = sync_read(dev, 16'384);
+        for (size_t i = 0; i + 1 < raw.size(); i += 2) {
+          float I = (raw[i] - 127.5f) / 127.5f;
+          float Q = (raw[i + 1] - 127.5f) / 127.5f;
+          power += I * I + Q * Q;
+          ++total;
+        }
+      }
+      rtlsdr_close(dev);
+
+      power /= static_cast<float>(total);
+      float db = 10.f * std::log10(power + 1e-12f);
       results.push_back({freq, db});
       std::cout << "  " << freq / 1e6f << " MHz -> " << db << " dBFS\n";
     }
+
     std::ranges::sort(results, [](const Result& a, const Result& b) {
       return a.power_db > b.power_db;
     });
@@ -92,12 +113,24 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
+  // ── All other modes: open the device ──────────────────────────────────────
   RtlSource sdr(freq_Hz, sample_rate_hz);
+  std::cout << "Hardware sample rate: " << sdr.actual_sample_rate() << " Hz\n";
 
+  // ── FFT mode ──────────────────────────────────────────────────────────────
   if (mode == Mode::Fft) {
-    auto raw = sdr.read(16'384);
-    const int N = static_cast<int>(raw.size() / 2);
+    // For FFT we do a single sync read — open raw device handle directly
+    rtlsdr_dev_t* dev = nullptr;
+    rtlsdr_open(&dev, 0);
+    rtlsdr_set_sample_rate(dev, sample_rate_hz);
+    rtlsdr_set_center_freq(dev, freq_Hz);
+    rtlsdr_set_tuner_gain_mode(dev, 0);
+    rtlsdr_reset_buffer(dev);
 
+    auto raw = sync_read(dev, 16'384);
+    rtlsdr_close(dev);
+
+    const int N = static_cast<int>(raw.size() / 2);
     std::vector<std::complex<float>> iq(N);
     for (size_t i = 0; i < static_cast<size_t>(N); ++i) {
       iq[i] = {(raw[i * 2] - 127.5f) / 127.5f,
@@ -136,9 +169,8 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  // ── Audio / Power modes ───────────────────────────────────────────────────
-
-  FirFilter lpf(channel_bw_hz, static_cast<float>(sample_rate_hz), 257);
+  // ── DSP chain ─────────────────────────────────────────────────────────────
+  FirFilter lpf(channel_bw_hz, static_cast<float>(sample_rate_hz), 65);
   Decimator rf_decim(decim_rf);
   FmDemod demod;
   Agc agc(0.5f, 0.01f);
@@ -147,53 +179,59 @@ int main(int argc, char* argv[]) {
   Decimator audio_decim(decim_audio);
   AudioSink sink(audio_rate, max_deviation_hz);
 
-  std::signal(SIGINT, [](int) { running = false; });
-
+  // ── Power mode ────────────────────────────────────────────────────────────
   if (mode == Mode::Power) {
-    while (running) {
-      auto raw = sdr.read(16'384);
+    sdr.start([&](const uint8_t* buf, size_t len) {
+      if (!running) return;
       float power = 0.f;
-      for (size_t i = 0; i + 1 < raw.size(); i += 2) {
-        float I = (raw[i] - 127.5f) / 127.5f;
-        float Q = (raw[i + 1] - 127.5f) / 127.5f;
+      for (size_t i = 0; i + 1 < len; i += 2) {
+        float I = (buf[i] - 127.5f) / 127.5f;
+        float Q = (buf[i + 1] - 127.5f) / 127.5f;
         power += I * I + Q * Q;
       }
-      power /= static_cast<float>(raw.size() / 2);
-      std::cout << "Power: " << 10.f * std::log10(power + 1e-12f) << " dBFS\n";
-    }
+      power /= static_cast<float>(len / 2);
+      std::cout << "Power: " << 10.f * std::log10(power + 1e-12f) << " dBFS\n"
+                << std::flush;
+    });
+
+    while (running) std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    sdr.stop();
     return 0;
   }
 
-  // AudioDemod — SDR runs on its own thread, PortAudio on its own thread
-  std::thread sdr_thread([&]() {
-    std::vector<std::complex<float>> iq;
-    std::vector<std::complex<float>> filtered;
-    std::vector<std::complex<float>> decimated;
-    std::vector<float> demodulated;
-    std::vector<float> deemphasised;
-    std::vector<float> audio;
+  // ── Audio demod mode ──────────────────────────────────────────────────────
+  std::vector<std::complex<float>> iq;
+  std::vector<std::complex<float>> filtered;
+  std::vector<std::complex<float>> decimated;
+  std::vector<float> demodulated;
+  std::vector<float> deemphasised;
+  std::vector<float> audio;
 
-    while (running) {
-      auto raw = sdr.read(16'384);
+  auto window_start = std::chrono::steady_clock::now();
+  uint64_t window_samples = 0;
 
-      iq.resize(raw.size() / 2);
-      for (size_t i = 0; i < iq.size(); ++i) {
-        float I = (raw[i * 2] - 127.5f) / 127.5f;
-        float Q = (raw[i * 2 + 1] - 127.5f) / 127.5f;
-        iq[i] = {I, Q};
-      }
+  sdr.start([&](const uint8_t* buf, size_t len) {
+    if (!running) return;
 
-      dc_blocker.process(iq);
-      lpf.process(iq, filtered);
-      rf_decim.process(filtered, decimated);
-      agc.process(decimated);
-      demod.process(decimated, demodulated, post_rf_rate);
-      deemph.process(demodulated, deemphasised);
-      audio_decim.process(deemphasised, audio);
-      sink.write(audio);
+    // Convert uint8 → complex<float>
+    iq.resize(len / 2);
+    for (size_t i = 0; i < iq.size(); ++i) {
+      float I = (buf[i * 2] - 127.5f) / 127.5f;
+      float Q = (buf[i * 2 + 1] - 127.5f) / 127.5f;
+      iq[i] = {I, Q};
     }
+
+    dc_blocker.process(iq);
+    lpf.process(iq, filtered);
+    rf_decim.process(filtered, decimated);
+    agc.process(decimated);
+    demod.process(decimated, demodulated, post_rf_rate);
+    deemph.process(demodulated, deemphasised);
+    audio_decim.process(deemphasised, audio);
+    sink.write(audio);
   });
 
-  sdr_thread.join();
+  while (running) std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  sdr.stop();
   return 0;
 }
