@@ -65,3 +65,15 @@ cc_library(
   ],
   visibility = ["//visibility:public"],
 )
+
+cc_library(
+  name = "spectrum_analyser",
+  srcs = ["spectrum_analyser.cc"],
+  hdrs = ["include/spectrum_analyser.h"],
+  copts = [
+    "-std=c++23",
+    "-Isrc/dsp/include"
+  ],
+  deps = ["//third_party/homebrew:fftw3f"],
+  visibility = ["//visibility:public"],
+)

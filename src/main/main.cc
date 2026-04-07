@@ -21,6 +21,7 @@
 #include "fir_filter.h"
 #include "fm_demod.h"
 #include "rtl_source.h"
+#include "spectrum_analyser.h"
 
 constexpr uint32_t freq_Hz = 88'100'000;
 constexpr uint32_t sample_rate_hz = 960'000;
@@ -178,6 +179,7 @@ int main(int argc, char* argv[]) {
   Deemphasis deemph(tau_us, post_rf_rate);
   Decimator audio_decim(decim_audio);
   AudioSink sink(audio_rate, max_deviation_hz);
+  SpectrumAnalyser spectrum(2048, static_cast<float>(sample_rate_hz), 4);
 
   // ── Power mode ────────────────────────────────────────────────────────────
   if (mode == Mode::Power) {
@@ -220,6 +222,8 @@ int main(int argc, char* argv[]) {
       float Q = (buf[i * 2 + 1] - 127.5f) / 127.5f;
       iq[i] = {I, Q};
     }
+
+    spectrum.process(iq);
 
     dc_blocker.process(iq);
     lpf.process(iq, filtered);
