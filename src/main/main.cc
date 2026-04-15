@@ -22,6 +22,7 @@
 #include "fm_demod.h"
 #include "rtl_source.h"
 #include "spectrum_analyser.h"
+#include "spectrum_server.h"
 
 constexpr uint32_t freq_Hz = 88'100'000;
 constexpr uint32_t sample_rate_hz = 960'000;
@@ -180,6 +181,8 @@ int main(int argc, char* argv[]) {
   Decimator audio_decim(decim_audio);
   AudioSink sink(audio_rate, max_deviation_hz);
   SpectrumAnalyser spectrum(2048, static_cast<float>(sample_rate_hz), 4);
+  SpectrumServer ws_server(7681, 2048, static_cast<float>(sample_rate_hz),
+                           freq_Hz);
 
   // ── Power mode ────────────────────────────────────────────────────────────
   if (mode == Mode::Power) {
@@ -224,6 +227,12 @@ int main(int argc, char* argv[]) {
     }
 
     spectrum.process(iq);
+
+    // Check if spectrum analyser has a new frame ready and broadcast it
+    std::vector<float> spec_db;
+    if (spectrum.latest_db(spec_db)) {
+      ws_server.broadcast(spec_db);
+    }
 
     dc_blocker.process(iq);
     lpf.process(iq, filtered);

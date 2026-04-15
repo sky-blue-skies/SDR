@@ -34,3 +34,27 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
+cc_library(
+    name = "openssl",
+    hdrs = glob(["openssl_include/**"]),
+    includes = ["openssl_include"],
+    linkopts = [
+        "-L/opt/homebrew/opt/openssl/lib",
+        "-lssl",
+        "-lcrypto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+
+cc_library(
+    name = "libwebsockets",
+    hdrs = glob(["libwebsockets_include/**"]),
+    includes = ["libwebsockets_include"],
+    linkopts = [
+        "-L/opt/homebrew/lib",
+        "-lwebsockets",
+    ],
+    deps = [":openssl"],  
+    visibility = ["//visibility:public"],
+)

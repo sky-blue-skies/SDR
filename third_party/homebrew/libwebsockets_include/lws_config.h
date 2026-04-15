@@ -1,0 +1,1 @@
+/opt/homebrew/include/lws_config.h

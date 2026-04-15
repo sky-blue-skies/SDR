@@ -50,3 +50,4 @@ void RtlSource::rtlsdr_callback(unsigned char* buf, uint32_t len, void* ctx) {
   auto* self = static_cast<RtlSource*>(ctx);
   if (self->_running && self->_callback) self->_callback(buf, len);
 }
+
