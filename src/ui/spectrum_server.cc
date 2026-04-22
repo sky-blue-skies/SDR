@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 
 // ── Per-session state
 // ───────────────────────────────────────────────────────── libwebsockets
@@ -146,6 +147,30 @@ int SpectrumServer::lws_callback(struct lws* wsi,
                                               lws_get_protocol(wsi));
       }
       break;
+    }
+
+    case LWS_CALLBACK_HTTP: {
+        // Read and serve index.html
+        const std::string path = "src/ui/www/index.html";
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, nullptr);
+            return -1;
+        }
+        std::string html((std::istreambuf_iterator<char>(file)),
+                          std::istreambuf_iterator<char>());
+
+        std::string headers =
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "Content-Length: " + std::to_string(html.size()) + "\r\n"
+            "Connection: close\r\n\r\n";
+
+        std::string response = headers + html;
+        std::vector<uint8_t> buf(LWS_PRE + response.size());
+        std::memcpy(buf.data() + LWS_PRE, response.data(), response.size());
+        lws_write(wsi, buf.data() + LWS_PRE, response.size(), LWS_WRITE_HTTP);
+        return -1;
     }
 
     default:
