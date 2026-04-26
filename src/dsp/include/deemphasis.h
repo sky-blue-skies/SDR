@@ -1,6 +1,7 @@
 #ifndef DEEMPHASIS_H
 #define DEEMPHASIS_H
 
+#include <span>
 #include <vector>
 
 class Deemphasis {
@@ -9,7 +10,7 @@ class Deemphasis {
   // sample_rate - sample rate of the input signal
   explicit Deemphasis(float tau_us, float sample_rate);
 
-  void process(const std::vector<float>& in, std::vector<float>& out);
+  void process(std::span<const float> in, std::vector<float>& out);
 
  private:
   float _alpha;

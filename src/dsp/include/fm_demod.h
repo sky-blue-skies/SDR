@@ -2,6 +2,7 @@
 #define FM_DEMOD_H
 
 #include <complex>
+#include <span>
 #include <vector>
 
 class FmDemod {
@@ -9,8 +10,8 @@ class FmDemod {
   FmDemod() = default;
 
   // Process a block of IQ samples -> audio samples
-  void process(const std::vector<std::complex<float>>& iq,
-               std::vector<float>& out, float sample_rate);
+  void process(std::span<const std::complex<float>> iq, std::vector<float>& out,
+               float sample_rate);
 
  private:
   std::complex<float> _prev = {1.f,

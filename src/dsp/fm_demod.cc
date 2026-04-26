@@ -3,7 +3,7 @@
 #include <cmath>
 #include <numbers>
 
-void FmDemod::process(const std::vector<std::complex<float>>& iq,
+void FmDemod::process(std::span<const std::complex<float>> iq,
                       std::vector<float>& out, float sample_rate) {
   out.clear();
   out.reserve(iq.size());

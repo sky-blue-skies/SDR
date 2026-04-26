@@ -2,13 +2,14 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 
 genrule(
     name = "index_html_cc",
-    srcs = ["www/index.html"],
-    outs = ["index_html.h"],
+  srcs = ["www/index.html"],
+  outs = ["include/index_html.h"],
     cmd = """
-        echo '#pragma once' > $@
-        echo 'static const char kIndexHtml[] = R\"HTML(' >> $@
-        cat $< >> $@
-        echo ')HTML\";' >> $@
+    mkdir -p include
+    echo '#pragma once' > $@
+    echo 'static const char kIndexHtml[] = R"HTML(' >> $@
+    cat $< >> $@
+    echo ')HTML";' >> $@
     """,
 )
 

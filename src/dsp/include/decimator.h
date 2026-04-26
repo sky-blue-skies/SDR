@@ -2,6 +2,7 @@
 #define DECIMATOR_H
 
 #include <complex>
+#include <span>
 #include <vector>
 
 class Decimator {
@@ -9,10 +10,10 @@ class Decimator {
   explicit Decimator(int factor);
 
   // Decimate a block of complex IQ samplesß
-  void process(const std::vector<std::complex<float>>& in,
+  void process(std::span<const std::complex<float>> in,
                std::vector<std::complex<float>>& out);
 
-  void process(const std::vector<float>& in, std::vector<float>& out);
+  void process(std::span<const float> in, std::vector<float>& out);
 
   int factor() const { return _factor; }
 

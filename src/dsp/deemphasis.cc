@@ -19,8 +19,7 @@ Deemphasis::Deemphasis(float tau_us, float sample_rate) {
   // For UK 50µs @ 256kHz: α ≈ 0.0724
 }
 
-void Deemphasis::process(const std::vector<float>& in,
-                         std::vector<float>& out) {
+void Deemphasis::process(std::span<const float> in, std::vector<float>& out) {
   out.clear();
   out.resize(in.size());  // ← resize not reserve
 

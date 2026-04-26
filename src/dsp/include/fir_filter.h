@@ -2,23 +2,20 @@
 #define FIR_FILTER_H
 
 #include <complex>
+#include <span>
 #include <vector>
 
 class FirFilter {
  public:
-  // cutoff_hz   frequency above which we attenuate
-  // sample_rate sample rate of the input signal
-  // num_taps    filter length must be odd, more = sharper (try 64+1 = 65)
-
   FirFilter(float cutoff_hz, float sample_rate, int num_taps = 65);
 
-  // Filter a block of complx IQ samples
-  void process(const std::vector<std::complex<float>>& iq,
-               std::vector<std::complex<float>>& out);
+  void process(std::span<const std::complex<float>> in,
+                 std::vector<std::complex<float>>& out);
 
  private:
   std::vector<float> _coeffs;               // filter coefficents h[n]
-  std::vector<std::complex<float>> _delay;  // delay line (last  N-1 samples)
+  std::vector<std::complex<float>> _delay_line;  // delay line (last  N-1 samples)
+  size_t                           _write_idx = 0;
   static std::vector<float> design_lowpass(float cutoff_norm, int num_taps);
 };
 

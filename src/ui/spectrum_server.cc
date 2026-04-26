@@ -5,7 +5,8 @@
 #include <cstring>
 #include <iostream>
 #include <sstream>
-#include <fstream>
+// Generated header containing embedded index.html (created by BUILD genrule)
+#include "index_html.h"
 
 // ── Per-session state
 // ───────────────────────────────────────────────────────── libwebsockets
@@ -150,23 +151,18 @@ int SpectrumServer::lws_callback(struct lws* wsi,
     }
 
     case LWS_CALLBACK_HTTP: {
-        // Read and serve index.html
-        const std::string path = "src/ui/www/index.html";
-        std::ifstream file(path);
-        if (!file.is_open()) {
-            lws_return_http_status(wsi, HTTP_STATUS_NOT_FOUND, nullptr);
-            return -1;
-        }
-        std::string html((std::istreambuf_iterator<char>(file)),
-                          std::istreambuf_iterator<char>());
+        // Serve the embedded index.html directly from the generated header.
+        const size_t html_len = sizeof(kIndexHtml) - 1; // exclude null terminator
 
-        std::string headers =
+        std::string response =
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/html\r\n"
-            "Content-Length: " + std::to_string(html.size()) + "\r\n"
+            "Content-Length: " + std::to_string(html_len) + "\r\n"
             "Connection: close\r\n\r\n";
 
-        std::string response = headers + html;
+        // Append body
+        response.append(kIndexHtml, html_len);
+
         std::vector<uint8_t> buf(LWS_PRE + response.size());
         std::memcpy(buf.data() + LWS_PRE, response.data(), response.size());
         lws_write(wsi, buf.data() + LWS_PRE, response.size(), LWS_WRITE_HTTP);
