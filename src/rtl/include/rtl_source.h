@@ -22,6 +22,7 @@ class RtlSource {
   // Start streaming — callback is called from the async thread
   void start(Callback cb);
   void stop();
+  void retune(uint32_t freq_hz);
 
   uint32_t sample_rate() const { return _sample_rate; }
   uint32_t freq_hz() const { return _freq_hz; }

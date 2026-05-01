@@ -51,3 +51,8 @@ void RtlSource::rtlsdr_callback(unsigned char* buf, uint32_t len, void* ctx) {
   if (self->_running && self->_callback) self->_callback(buf, len);
 }
 
+void RtlSource::retune(uint32_t freq_hz) {
+  _freq_hz = freq_hz;
+  rtlsdr_set_center_freq(_dev, freq_hz);
+  std::cout << "[RTL] Retuned to " << freq_hz / 1e6 << " MHz\n";
+}

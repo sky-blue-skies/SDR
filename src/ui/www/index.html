@@ -1,277 +1,322 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SDR Spectrum</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SDR Spectrum</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    body {
-      background: #0a0a0f;
-      color: #e0e0e0;
-      font-family: 'Courier New', monospace;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
+      body {
+        background: #0a0a0f;
+        color: #e0e0e0;
+        font-family: "Courier New", monospace;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
 
-    #header {
-      padding: 8px 16px;
-      background: #12121a;
-      border-bottom: 1px solid #2a2a3a;
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      flex-shrink: 0;
-    }
+      #header {
+        padding: 8px 16px;
+        background: #12121a;
+        border-bottom: 1px solid #2a2a3a;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        flex-shrink: 0;
+      }
 
-    #header h1 {
-      font-size: 14px;
-      color: #7090ff;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
+      #header h1 {
+        font-size: 14px;
+        color: #7090ff;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
 
-    .stat {
-      font-size: 12px;
-      color: #8888aa;
-    }
+      .stat {
+        font-size: 12px;
+        color: #8888aa;
+      }
 
-    .stat span {
-      color: #c0d0ff;
-      font-weight: bold;
-    }
+      .stat span {
+        color: #c0d0ff;
+        font-weight: bold;
+      }
 
-    #canvases {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-height: 0;
-    }
+      #canvases {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
 
-    canvas {
-      width: 100%;
-      display: block;
-    }
+      canvas {
+        width: 100%;
+        display: block;
+      }
 
-    #spectrum-canvas {
-      height: 200px;
-      flex-shrink: 0;
-      border-bottom: 1px solid #2a2a3a;
-    }
+      #spectrum-canvas {
+        height: 200px;
+        flex-shrink: 0;
+        border-bottom: 1px solid #2a2a3a;
+      }
 
-    #waterfall-canvas {
-      flex: 1;
-    }
+      #waterfall-canvas {
+        flex: 1;
+      }
 
-    #freq-axis {
-      height: 24px;
-      flex-shrink: 0;
-      background: #12121a;
-      border-top: 1px solid #2a2a3a;
-      position: relative;
-    }
+      #freq-axis {
+        height: 24px;
+        flex-shrink: 0;
+        background: #12121a;
+        border-top: 1px solid #2a2a3a;
+        position: relative;
+      }
 
-    #status {
-      font-size: 11px;
-      color: #ff6060;
-      margin-left: auto;
-    }
+      #status {
+        font-size: 11px;
+        color: #ff6060;
+        margin-left: auto;
+      }
 
-    #status.connected { color: #60ff90; }
-  </style>
-</head>
-<body>
+      #status.connected {
+        color: #60ff90;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="header">
+      <h1>SDR Spectrum</h1>
+      <div class="stat">Freq: <span id="cf-display">—</span></div>
+      <div class="stat">SR: <span id="sr-display">—</span></div>
+      <div class="stat">Peak: <span id="peak-display">—</span></div>
+      <div class="stat">FPS: <span id="fps-display">—</span></div>
 
-<div id="header">
-  <h1>SDR Spectrum</h1>
-  <div class="stat">Freq: <span id="cf-display">—</span></div>
-  <div class="stat">SR: <span id="sr-display">—</span></div>
-  <div class="stat">Peak: <span id="peak-display">—</span></div>
-  <div class="stat">FPS: <span id="fps-display">—</span></div>
-  <div id="status">⬤ Disconnected</div>
-</div>
+      <div id="tune-control">
+        <input
+          id="freq-input"
+          type="number"
+          value="88.1"
+          step="0.1"
+          min="76"
+          max="108"
+          style="
+            background: #1a1a2e;
+            border: 1px solid #3a3a5a;
+            color: #c0d0ff;
+            padding: 3px 8px;
+            font-family: &quot;Courier New&quot;, monospace;
+            font-size: 12px;
+            width: 80px;
+            border-radius: 3px;
+          "
+        />
+        <span style="font-size: 12px; color: #8888aa"> MHz</span>
+        <button
+          onclick="tune()"
+          style="
+            background: #2a3a6a;
+            border: 1px solid #4a5a8a;
+            color: #c0d0ff;
+            padding: 3px 10px;
+            font-family: &quot;Courier New&quot;, monospace;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-left: 4px;
+          "
+        >
+          Tune
+        </button>
+      </div>
 
-<div id="canvases">
-  <canvas id="spectrum-canvas"></canvas>
-  <canvas id="waterfall-canvas"></canvas>
-</div>
-<div id="freq-axis"></div>
+      <div id="status">⬤ Disconnected</div>
+      <!-- ← status stays last -->
+    </div>
 
-<script>
-// ── Canvas setup ──────────────────────────────────────────────────────────────
+    <div id="canvases">
+      <canvas id="spectrum-canvas"></canvas>
+      <canvas id="waterfall-canvas"></canvas>
+    </div>
+    <div id="freq-axis"></div>
 
-const specCanvas  = document.getElementById('spectrum-canvas');
-const specCtx     = specCanvas.getContext('2d');
-const wfCanvas    = document.getElementById('waterfall-canvas');
-const wfCtx       = wfCanvas.getContext('2d');
+    <script>
+      // ── Canvas setup ──────────────────────────────────────────────────────────────
 
-// Resize canvases to their CSS pixel size
-function resizeCanvases() {
-  specCanvas.width  = specCanvas.offsetWidth;
-  specCanvas.height = specCanvas.offsetHeight;
-  wfCanvas.width    = wfCanvas.offsetWidth;
-  wfCanvas.height   = wfCanvas.offsetHeight;
-  // Recreate waterfall buffer on resize
-  initWaterfall();
-}
+      const specCanvas = document.getElementById("spectrum-canvas");
+      const specCtx = specCanvas.getContext("2d");
+      const wfCanvas = document.getElementById("waterfall-canvas");
+      const wfCtx = wfCanvas.getContext("2d");
 
-window.addEventListener('resize', resizeCanvases);
+      // Resize canvases to their CSS pixel size
+      function resizeCanvases() {
+        specCanvas.width = specCanvas.offsetWidth;
+        specCanvas.height = specCanvas.offsetHeight;
+        wfCanvas.width = wfCanvas.offsetWidth;
+        wfCanvas.height = wfCanvas.offsetHeight;
+        // Recreate waterfall buffer on resize
+        initWaterfall();
+      }
 
-// ── Waterfall buffer ──────────────────────────────────────────────────────────
-// We maintain an offscreen ImageData that we scroll upward each frame
+      window.addEventListener("resize", resizeCanvases);
 
-let wfImageData = null;
+      // ── Waterfall buffer ──────────────────────────────────────────────────────────
+      // We maintain an offscreen ImageData that we scroll upward each frame
 
-function initWaterfall() {
-  if (wfCanvas.width > 0 && wfCanvas.height > 0) {
-    wfImageData = wfCtx.createImageData(wfCanvas.width, wfCanvas.height);
-    // Fill with black
-    wfImageData.data.fill(0);
-    // Set alpha to 255 everywhere
-    for (let i = 3; i < wfImageData.data.length; i += 4)
-      wfImageData.data[i] = 255;
-  }
-}
+      let wfImageData = null;
 
-// ── Colour map (black → purple → blue → cyan → green → yellow → red) ─────────
+      function initWaterfall() {
+        if (wfCanvas.width > 0 && wfCanvas.height > 0) {
+          wfImageData = wfCtx.createImageData(wfCanvas.width, wfCanvas.height);
+          // Fill with black
+          wfImageData.data.fill(0);
+          // Set alpha to 255 everywhere
+          for (let i = 3; i < wfImageData.data.length; i += 4)
+            wfImageData.data[i] = 255;
+        }
+      }
 
-function dbToColour(db) {
-  // Map dB range [-100, -20] to [0, 1]
-  const MIN_DB = -100;
-  const MAX_DB = -20;
-  const t = Math.max(0, Math.min(1, (db - MIN_DB) / (MAX_DB - MIN_DB)));
+      // ── Colour map (black → purple → blue → cyan → green → yellow → red) ─────────
 
-  // Inferno-inspired colour map
-  const stops = [
-    [0.0,  [  8,   7,  20]],
-    [0.2,  [ 90,  15, 110]],
-    [0.4,  [180,  50,  70]],
-    [0.6,  [230, 130,  20]],
-    [0.8,  [250, 210,  50]],
-    [1.0,  [255, 255, 220]],
-  ];
+      function dbToColour(db) {
+        // Map dB range [-100, -20] to [0, 1]
+        const MIN_DB = -100;
+        const MAX_DB = -20;
+        const t = Math.max(0, Math.min(1, (db - MIN_DB) / (MAX_DB - MIN_DB)));
 
-  for (let i = 0; i < stops.length - 1; ++i) {
-    const [t0, c0] = stops[i];
-    const [t1, c1] = stops[i + 1];
-    if (t >= t0 && t <= t1) {
-      const f = (t - t0) / (t1 - t0);
-      return [
-        Math.round(c0[0] + f * (c1[0] - c0[0])),
-        Math.round(c0[1] + f * (c1[1] - c0[1])),
-        Math.round(c0[2] + f * (c1[2] - c0[2])),
-      ];
-    }
-  }
-  return [255, 255, 220];
-}
+        // Inferno-inspired colour map
+        const stops = [
+          [0.0, [8, 7, 20]],
+          [0.2, [90, 15, 110]],
+          [0.4, [180, 50, 70]],
+          [0.6, [230, 130, 20]],
+          [0.8, [250, 210, 50]],
+          [1.0, [255, 255, 220]],
+        ];
 
-// ── Spectrum drawing ──────────────────────────────────────────────────────────
+        for (let i = 0; i < stops.length - 1; ++i) {
+          const [t0, c0] = stops[i];
+          const [t1, c1] = stops[i + 1];
+          if (t >= t0 && t <= t1) {
+            const f = (t - t0) / (t1 - t0);
+            return [
+              Math.round(c0[0] + f * (c1[0] - c0[0])),
+              Math.round(c0[1] + f * (c1[1] - c0[1])),
+              Math.round(c0[2] + f * (c1[2] - c0[2])),
+            ];
+          }
+        }
+        return [255, 255, 220];
+      }
 
-function drawSpectrum(bins) {
-  const w = specCanvas.width;
-  const h = specCanvas.height;
-  const MIN_DB = -100;
-  const MAX_DB = -20;
+      // ── Spectrum drawing ──────────────────────────────────────────────────────────
 
-  specCtx.clearRect(0, 0, w, h);
+      function drawSpectrum(bins) {
+        const w = specCanvas.width;
+        const h = specCanvas.height;
+        const MIN_DB = -100;
+        const MAX_DB = -20;
 
-  // Grid lines
-  specCtx.strokeStyle = '#1e1e2e';
-  specCtx.lineWidth   = 1;
-  for (let db = MIN_DB; db <= MAX_DB; db += 10) {
-    const y = h - ((db - MIN_DB) / (MAX_DB - MIN_DB)) * h;
-    specCtx.beginPath();
-    specCtx.moveTo(0, y);
-    specCtx.lineTo(w, y);
-    specCtx.stroke();
+        specCtx.clearRect(0, 0, w, h);
 
-    specCtx.fillStyle = '#444466';
-    specCtx.font      = '10px Courier New';
-    specCtx.fillText(db + 'dB', 4, y - 2);
-  }
+        // Grid lines
+        specCtx.strokeStyle = "#1e1e2e";
+        specCtx.lineWidth = 1;
+        for (let db = MIN_DB; db <= MAX_DB; db += 10) {
+          const y = h - ((db - MIN_DB) / (MAX_DB - MIN_DB)) * h;
+          specCtx.beginPath();
+          specCtx.moveTo(0, y);
+          specCtx.lineTo(w, y);
+          specCtx.stroke();
 
-  // Spectrum line
-  specCtx.beginPath();
-  specCtx.strokeStyle = '#4488ff';
-  specCtx.lineWidth   = 1.5;
+          specCtx.fillStyle = "#444466";
+          specCtx.font = "10px Courier New";
+          specCtx.fillText(db + "dB", 4, y - 2);
+        }
 
-  for (let i = 0; i < bins.length; ++i) {
-    const x = (i / bins.length) * w;
-    const y = h - ((bins[i] - MIN_DB) / (MAX_DB - MIN_DB)) * h;
-    if (i === 0) specCtx.moveTo(x, y);
-    else         specCtx.lineTo(x, y);
-  }
-  specCtx.stroke();
+        // Spectrum line
+        specCtx.beginPath();
+        specCtx.strokeStyle = "#4488ff";
+        specCtx.lineWidth = 1.5;
 
-  // Fill below the line
-  specCtx.lineTo(w, h);
-  specCtx.lineTo(0, h);
-  specCtx.closePath();
-  const grad = specCtx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0,   'rgba(68, 136, 255, 0.4)');
-  grad.addColorStop(1,   'rgba(68, 136, 255, 0.02)');
-  specCtx.fillStyle = grad;
-  specCtx.fill();
+        for (let i = 0; i < bins.length; ++i) {
+          const x = (i / bins.length) * w;
+          const y = h - ((bins[i] - MIN_DB) / (MAX_DB - MIN_DB)) * h;
+          if (i === 0) specCtx.moveTo(x, y);
+          else specCtx.lineTo(x, y);
+        }
+        specCtx.stroke();
 
-  // Centre frequency marker
-  specCtx.strokeStyle = 'rgba(255, 100, 100, 0.5)';
-  specCtx.lineWidth   = 1;
-  specCtx.setLineDash([4, 4]);
-  specCtx.beginPath();
-  specCtx.moveTo(w / 2, 0);
-  specCtx.lineTo(w / 2, h);
-  specCtx.stroke();
-  specCtx.setLineDash([]);
-}
+        // Fill below the line
+        specCtx.lineTo(w, h);
+        specCtx.lineTo(0, h);
+        specCtx.closePath();
+        const grad = specCtx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, "rgba(68, 136, 255, 0.4)");
+        grad.addColorStop(1, "rgba(68, 136, 255, 0.02)");
+        specCtx.fillStyle = grad;
+        specCtx.fill();
 
-// ── Waterfall drawing ─────────────────────────────────────────────────────────
+        // Centre frequency marker
+        specCtx.strokeStyle = "rgba(255, 100, 100, 0.5)";
+        specCtx.lineWidth = 1;
+        specCtx.setLineDash([4, 4]);
+        specCtx.beginPath();
+        specCtx.moveTo(w / 2, 0);
+        specCtx.lineTo(w / 2, h);
+        specCtx.stroke();
+        specCtx.setLineDash([]);
+      }
 
-function drawWaterfall(bins) {
-  if (!wfImageData) return;
+      // ── Waterfall drawing ─────────────────────────────────────────────────────────
 
-  const w   = wfCanvas.width;
-  const h   = wfCanvas.height;
-  const len = bins.length;
+      function drawWaterfall(bins) {
+        if (!wfImageData) return;
 
-  // Scroll existing image down by one row
-  // Copy rows 0..h-2 down to rows 1..h-1
-  wfImageData.data.copyWithin(w * 4, 0, w * (h - 1) * 4);
+        const w = wfCanvas.width;
+        const h = wfCanvas.height;
+        const len = bins.length;
 
-  // Write new row at top
-  for (let x = 0; x < w; ++x) {
-    const binIdx = Math.floor((x / w) * len);
-    const [r, g, b] = dbToColour(bins[binIdx]);
-    const px = x * 4;
-    wfImageData.data[px]     = r;
-    wfImageData.data[px + 1] = g;
-    wfImageData.data[px + 2] = b;
-    wfImageData.data[px + 3] = 255;
-  }
+        // Scroll existing image down by one row
+        // Copy rows 0..h-2 down to rows 1..h-1
+        wfImageData.data.copyWithin(w * 4, 0, w * (h - 1) * 4);
 
-  wfCtx.putImageData(wfImageData, 0, 0);
-}
+        // Write new row at top
+        for (let x = 0; x < w; ++x) {
+          const binIdx = Math.floor((x / w) * len);
+          const [r, g, b] = dbToColour(bins[binIdx]);
+          const px = x * 4;
+          wfImageData.data[px] = r;
+          wfImageData.data[px + 1] = g;
+          wfImageData.data[px + 2] = b;
+          wfImageData.data[px + 3] = 255;
+        }
 
-// ── Frequency axis ────────────────────────────────────────────────────────────
+        wfCtx.putImageData(wfImageData, 0, 0);
+      }
 
-function drawFreqAxis(centerFreq, sampleRate) {
-  const axis = document.getElementById('freq-axis');
-  axis.innerHTML = '';
+      // ── Frequency axis ────────────────────────────────────────────────────────────
 
-  const bins      = 5;
-  const halfSpan  = sampleRate / 2;
+      function drawFreqAxis(centerFreq, sampleRate) {
+        const axis = document.getElementById("freq-axis");
+        axis.innerHTML = "";
 
-  for (let i = 0; i <= bins; ++i) {
-    const frac   = i / bins;
-    const freqHz = (centerFreq - halfSpan) + frac * sampleRate;
-    const mhz    = (freqHz / 1e6).toFixed(2);
+        const bins = 5;
+        const halfSpan = sampleRate / 2;
 
-    const label       = document.createElement('span');
-    label.textContent = mhz + ' MHz';
-    label.style.cssText = `
+        for (let i = 0; i <= bins; ++i) {
+          const frac = i / bins;
+          const freqHz = centerFreq - halfSpan + frac * sampleRate;
+          const mhz = (freqHz / 1e6).toFixed(2);
+
+          const label = document.createElement("span");
+          label.textContent = mhz + " MHz";
+          label.style.cssText = `
       position: absolute;
       left: ${frac * 100}%;
       transform: translateX(-50%);
@@ -280,88 +325,121 @@ function drawFreqAxis(centerFreq, sampleRate) {
       top: 4px;
       white-space: nowrap;
     `;
-    axis.appendChild(label);
-  }
-}
+          axis.appendChild(label);
+        }
+      }
 
-// ── FPS counter ───────────────────────────────────────────────────────────────
+      // ── FPS counter ───────────────────────────────────────────────────────────────
 
-let frameCount = 0;
-let lastFpsTime = performance.now();
+      let frameCount = 0;
+      let lastFpsTime = performance.now();
 
-function updateFps() {
-  ++frameCount;
-  const now     = performance.now();
-  const elapsed = now - lastFpsTime;
-  if (elapsed >= 1000) {
-    document.getElementById('fps-display').textContent =
-      (frameCount * 1000 / elapsed).toFixed(1);
-    frameCount  = 0;
-    lastFpsTime = now;
-  }
-}
+      function updateFps() {
+        ++frameCount;
+        const now = performance.now();
+        const elapsed = now - lastFpsTime;
+        if (elapsed >= 1000) {
+          document.getElementById("fps-display").textContent = (
+            (frameCount * 1000) /
+            elapsed
+          ).toFixed(1);
+          frameCount = 0;
+          lastFpsTime = now;
+        }
+      }
 
-// ── WebSocket connection ──────────────────────────────────────────────────────
+      // ── Tuner ───────────────────────────────────────────────────────────────
+      function tune() {
+        const mhz = parseFloat(document.getElementById("freq-input").value);
+        if (isNaN(mhz) || mhz < 76 || mhz > 108) {
+          alert("Please enter a frequency between 76 and 108 MHz");
+          return;
+        }
+        const hz = Math.round(mhz * 1e6);
 
-let lastCf = null;
-let lastSr = null;
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          alert("WebSocket not connected. Please wait and try again.");
+          console.warn("[WS] Tune request failed: WebSocket not ready");
+          return;
+        }
 
-function connect() {
-  const ws     = new WebSocket('ws://localhost:7681', 'spectrum');
-  const status = document.getElementById('status');
+        ws.send(JSON.stringify({ tune: hz }));
+        console.log("[WS] Tune request sent:", hz);
+      }
 
-  ws.onopen = () => {
-    status.textContent = '⬤ Connected';
-    status.className   = 'connected';
-    console.log('[WS] Connected');
-    resizeCanvases();
-  };
+      // Also allow pressing Enter in the input field
+      document.getElementById("freq-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") tune();
+      });
 
-  ws.onclose = () => {
-    status.textContent = '⬤ Disconnected';
-    status.className   = '';
-    console.log('[WS] Disconnected — retrying in 2s');
-    setTimeout(connect, 2000);  // auto-reconnect
-  };
+      // ── WebSocket connection ──────────────────────────────────────────────────────
 
-  ws.onerror = (e) => {
-    console.error('[WS] Error', e);
-  };
+      let lastCf = null;
+      let lastSr = null;
 
-  ws.onmessage = (evt) => {
-    let frame;
-    try { frame = JSON.parse(evt.data); }
-    catch (e) { return; }
+      let ws = null;
+      function connect() {
+        ws = new WebSocket("ws://localhost:7681", "spectrum");
+        const status = document.getElementById("status");
 
-    const { sr, cf, bins } = frame;
+        ws.onopen = () => {
+          status.textContent = "⬤ Connected";
+          status.className = "connected";
+          console.log("[WS] Connected");
+          resizeCanvases();
+        };
 
-    // Update header stats
-    document.getElementById('cf-display').textContent =
-      (cf / 1e6).toFixed(3) + ' MHz';
-    document.getElementById('sr-display').textContent =
-      (sr / 1e3).toFixed(0) + ' kHz';
+        ws.onclose = () => {
+          status.textContent = "⬤ Disconnected";
+          status.className = "";
+          console.log("[WS] Disconnected — retrying in 2s");
+          setTimeout(connect, 2000); // auto-reconnect
+        };
 
-    // Peak power
-    const peak = bins.reduce((a, b) => Math.max(a, b), -Infinity);
-    document.getElementById('peak-display').textContent =
-      peak.toFixed(1) + ' dBFS';
+        ws.onerror = (e) => {
+          console.error("[WS] Error", e);
+        };
 
-    // Redraw frequency axis only when cf/sr changes
-    if (cf !== lastCf || sr !== lastSr) {
-      drawFreqAxis(cf, sr);
-      lastCf = cf;
-      lastSr = sr;
-    }
+        ws.onmessage = (evt) => {
+          let frame;
+          try {
+            frame = JSON.parse(evt.data);
+          } catch (e) {
+            return;
+          }
 
-    drawSpectrum(bins);
-    drawWaterfall(bins);
-    updateFps();
-  };
-}
+          const { sr, cf, bins } = frame;
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-resizeCanvases();
-connect();
-</script>
-</body>
+          // Update header stats
+          document.getElementById("cf-display").textContent =
+            (cf / 1e6).toFixed(3) + " MHz";
+          document.getElementById("sr-display").textContent =
+            (sr / 1e3).toFixed(0) + " kHz";
+
+          // Peak power
+          const peak = bins.reduce((a, b) => Math.max(a, b), -Infinity);
+          document.getElementById("peak-display").textContent =
+            peak.toFixed(1) + " dBFS";
+
+          // Redraw frequency axis only when cf/sr changes
+          if (cf !== lastCf || sr !== lastSr) {
+            drawFreqAxis(cf, sr);
+            lastCf = cf;
+            lastSr = sr;
+            
+            // Update frequency input to reflect actual server frequency
+            document.getElementById("freq-input").value = (cf / 1e6).toFixed(1);
+          }
+
+          drawSpectrum(bins);
+          drawWaterfall(bins);
+          updateFps();
+        };
+      }
+
+      // ── Boot ──────────────────────────────────────────────────────────────────────
+      resizeCanvases();
+      connect();
+    </script>
+  </body>
 </html>

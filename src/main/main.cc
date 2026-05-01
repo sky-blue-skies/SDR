@@ -24,7 +24,7 @@
 #include "spectrum_analyser.h"
 #include "spectrum_server.h"
 
-constexpr uint32_t freq_Hz = 88'100'000;
+constexpr uint32_t default_freq_hz = 88'100'000;
 constexpr uint32_t sample_rate_hz = 960'000;
 constexpr float channel_bw_hz = 100'000.f;
 constexpr float max_deviation_hz = 75'000.f * 0.5f;
@@ -43,13 +43,28 @@ static std::atomic<bool> running{true};
 
 enum class Mode { AudioDemod, Power, Scan, Fft };
 
-Mode parse_args(int argc, char* argv[]) {
+struct Args {
+  Mode mode = Mode::AudioDemod;
+  uint32_t freq_hz = default_freq_hz;
+};
+
+Args parse_args(int argc, char* argv[]) {
+  Args args;
   for (int i = 1; i < argc; ++i) {
-    if (std::string_view(argv[i]) == "--power") return Mode::Power;
-    if (std::string_view(argv[i]) == "--scan") return Mode::Scan;
-    if (std::string_view(argv[i]) == "--fft") return Mode::Fft;
+    std::string_view arg(argv[i]);
+    if (arg == "--power") {
+      args.mode = Mode::Power;
+    } else if (arg == "--scan") {
+      args.mode = Mode::Scan;
+    } else if (arg == "--fft") {
+      args.mode = Mode::Fft;
+    } else if (arg == "--freq" && i + 1 < argc) {
+      float mhz = std::stof(argv[++i]);
+      args.freq_hz = static_cast<uint32_t>(mhz * 1e6f);
+      std::cout << "[Args] Tuning to " << mhz << " MHz\n";
+    }
   }
-  return Mode::AudioDemod;
+  return args;
 }
 
 // ── Scan mode uses sync reads — keep a separate sync helper ──────────────────
@@ -64,7 +79,9 @@ static std::vector<uint8_t> sync_read(rtlsdr_dev_t* dev, int num_samples) {
 }
 
 int main(int argc, char* argv[]) {
-  const Mode mode = parse_args(argc, argv);
+  const Args args = parse_args(argc, argv);
+  const Mode mode = args.mode;
+  const uint32_t freq_Hz = args.freq_hz;
 
   std::signal(SIGINT, [](int) { running = false; });
 
@@ -184,6 +201,11 @@ int main(int argc, char* argv[]) {
   SpectrumServer ws_server(7681, 2048, static_cast<float>(sample_rate_hz),
                            freq_Hz);
 
+  ws_server.on_tune_request([&](uint32_t new_freq) {
+    sdr.retune(new_freq);
+    ws_server.set_center_freq(new_freq);
+  });
+
   // ── Power mode ────────────────────────────────────────────────────────────
   if (mode == Mode::Power) {
     sdr.start([&](const uint8_t* buf, size_t len) {
@@ -226,8 +248,6 @@ int main(int argc, char* argv[]) {
       iq[i] = {I, Q};
     }
 
-    spectrum.process(iq);
-
     // Check if spectrum analyser has a new frame ready and broadcast it
     std::vector<float> spec_db;
     if (spectrum.latest_db(spec_db)) {
@@ -235,6 +255,7 @@ int main(int argc, char* argv[]) {
     }
 
     dc_blocker.process(iq);
+    spectrum.process(iq);  // ← full bandwidth, DC removed
     lpf.process(iq, filtered);
     rf_decim.process(filtered, decimated);
     agc.process(decimated);

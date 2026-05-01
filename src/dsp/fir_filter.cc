@@ -13,7 +13,7 @@ FirFilter::FirFilter(float cutoff_hz, float sample_rate, int num_taps) {
   const float cutoff_norm = cutoff_hz / (sample_rate / 2.f);
 
   _coeffs = design_lowpass(cutoff_norm, num_taps);
-  _delay_line.assign(num_taps - 1, {0.f, 0.f});
+  _delay_line.assign(num_taps, {0.f, 0.f});
   _write_idx = 0;
 }
 
@@ -54,14 +54,14 @@ std::vector<float> FirFilter::design_lowpass(float cutoff_norm, int num_taps) {
 // ── Per block processing ───────────────────────────────────────
 void FirFilter::process(std::span<const std::complex<float>> in,
                         std::vector<std::complex<float>>& out) {
-  out.clear();  // ← clear before filling
-  out.reserve(in.size());
+  out.clear();            // ← clear before filling
+  out.resize(in.size());  // ← MUST resize to match input size
 
   const int taps = static_cast<int>(_coeffs.size());
 
   for (size_t i = 0; i < in.size(); ++i) {
     // Write a new sample into circular delay_line
-    _delay_line[_write_idx] = in[_write_idx];
+    _delay_line[_write_idx] = in[i];  // ← was in[_write_idx], should be in[i]
 
     // MAC - read backwards from write pointer
     std::complex<float> sum{0.f, 0.f};

@@ -32,14 +32,15 @@ AudioSink::AudioSink(float sample_rate, float max_deviation_hz,
   }
 
   err = Pa_StartStream(_stream);
-  // Pre-fill with silence to give SDR thread time to buffer up
-  std::fill(_ring.begin(), _ring.end(), 0.f);
-  _write_pos.store(_capacity / 2, std::memory_order_release);
   if (err != paNoError) {
     Pa_CloseStream(_stream);
     Pa_Terminate();
     throw std::runtime_error(Pa_GetErrorText(err));
   }
+
+  // Pre-fill with silence to give SDR thread time to buffer up
+  std::fill(_ring.begin(), _ring.end(), 0.f);
+  _write_pos.store(_capacity / 2, std::memory_order_release);
 
   std::cout << "[Audio] Opened output stream @ " << _sample_rate << " Hz\n";
 }
@@ -53,7 +54,8 @@ AudioSink::~AudioSink() {
     Pa_CloseStream(_stream);
   }
   Pa_Terminate();
-  std::cout << "[Audio] Stream closed\n";
+  std::cout << "[Audio] Stream closed (underruns: " << _underrun_count.load()
+            << ")\n";
 }
 
 // ── Write (SDR thread)
@@ -61,7 +63,9 @@ AudioSink::~AudioSink() {
 
 void AudioSink::write(const std::vector<float>& samples) {
   for (float s : samples) {
-    // Scale from atan2 range [-π, π] to [-1, 1]
+    // Scale from frequency (Hz) to normalized [-1, 1]
+    // FM demod outputs ±max_deviation_hz, so we normalize by dividing by
+    // max_deviation_hz
     float scaled = s * _k_scale;
 
     // Soft clip to [-1, 1] just in case

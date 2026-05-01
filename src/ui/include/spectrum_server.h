@@ -4,10 +4,14 @@
 #include <libwebsockets.h>
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+// Callback type for tune requests from the browser
+using TuneCallback = std::function<void(uint32_t freq_hz)>;
 
 // Foward declare to avoid putting libwebsockets into every header
 struct lws_context;
@@ -39,6 +43,12 @@ class SpectrumServer {
     _center_freq.store(freq_Hz, std::memory_order_relaxed);
   }
 
+  // Register a callback to be called when browser requests a retune
+  void on_tune_request(TuneCallback cb) {
+    std::lock_guard lock(_tune_mutex);
+    _tune_callback = std::move(cb);
+  }
+
   int port() const { return _port; }
   bool is_running() const { return _running.load(); }
 
@@ -61,5 +71,8 @@ class SpectrumServer {
   struct lws_context* _context = nullptr;
   std::thread _thread;
   std::atomic<bool> _running{false};
+
+  std::mutex _tune_mutex;
+  TuneCallback _tune_callback;
 };
 #endif  // SPECTRUM_SERVER_H

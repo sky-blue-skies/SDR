@@ -2,6 +2,7 @@
 
 #include <libwebsockets.h>
 
+#include <cctype>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -151,22 +152,60 @@ int SpectrumServer::lws_callback(struct lws* wsi,
     }
 
     case LWS_CALLBACK_HTTP: {
-        // Serve the embedded index.html directly from the generated header.
-        const size_t html_len = sizeof(kIndexHtml) - 1; // exclude null terminator
+      // Serve the embedded index.html directly from the generated header.
+      const size_t html_len =
+          sizeof(kIndexHtml) - 1;  // exclude null terminator
 
-        std::string response =
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/html\r\n"
-            "Content-Length: " + std::to_string(html_len) + "\r\n"
-            "Connection: close\r\n\r\n";
+      std::string response =
+          "HTTP/1.1 200 OK\r\n"
+          "Content-Type: text/html\r\n"
+          "Content-Length: " +
+          std::to_string(html_len) +
+          "\r\n"
+          "Connection: close\r\n\r\n";
 
-        // Append body
-        response.append(kIndexHtml, html_len);
+      // Append body
+      response.append(kIndexHtml, html_len);
 
-        std::vector<uint8_t> buf(LWS_PRE + response.size());
-        std::memcpy(buf.data() + LWS_PRE, response.data(), response.size());
-        lws_write(wsi, buf.data() + LWS_PRE, response.size(), LWS_WRITE_HTTP);
-        return -1;
+      std::vector<uint8_t> buf(LWS_PRE + response.size());
+      std::memcpy(buf.data() + LWS_PRE, response.data(), response.size());
+      lws_write(wsi, buf.data() + LWS_PRE, response.size(), LWS_WRITE_HTTP);
+      return -1;
+    }
+
+    case LWS_CALLBACK_RECEIVE: {
+      // Browser sent us a message - expect JSON: {"tune":881000000}
+      if (!in || len == 0) break;
+
+      std::string msg(static_cast<const char*>(in), len);
+      // Simple parse - find "tune": and extract the number
+      // we avoid a full JSON library for this trivial case
+      auto pos = msg.find("\"tune\":");
+      if (pos == std::string::npos) break;
+
+      pos += 7;  // skip past "tune":
+      // Skip whitespace
+      while (pos < msg.size() && std::isspace(msg[pos])) ++pos;
+
+      try {
+        uint32_t freq = static_cast<uint32_t>(std::stoul(msg.substr(pos)));
+        std::cout << "[WS] Tune request: " << freq / 1e6f << " MHz\n";
+
+        TuneCallback cb;
+        {
+          std::lock_guard lock(self->_tune_mutex);
+          cb = self->_tune_callback;
+        }
+        if (!cb) {
+          std::cout << "[WS] WARNING: No tune callback registered!\n";
+        } else {
+          cb(freq);
+        }
+      } catch (const std::exception& e) {
+        std::cout << "[WS] ERROR parsing tune message: " << e.what() 
+                  << "\n       Raw message: " << msg << "\n";
+      }
+      break;
     }
 
     default:
